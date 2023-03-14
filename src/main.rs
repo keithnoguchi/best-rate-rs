@@ -6,7 +6,7 @@ use std::collections::hash_map::{Entry, HashMap};
 use std::collections::{BTreeSet, VecDeque};
 use std::fmt;
 
-use tracing::{debug, trace};
+use tracing::{debug, instrument, trace};
 
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 struct Vertex(char);
@@ -66,7 +66,8 @@ impl Graph {
         entry.insert(edge.0, 1.0 / rate);
     }
 
-    // Breath first traversal find a best rate.
+    // Breath first traversal to find the best rate.
+    #[instrument(level = "debug", skip(self), ret)]
     pub fn find_best_rate(&self, src: &Vertex, dst: &Vertex) -> Option<f32> {
         let mut visited = HashMap::new();
         let mut queue = VecDeque::new();
@@ -92,8 +93,10 @@ impl Graph {
                 best_rate = best_rate
                     .map(|best_rate| {
                         if current_rate > best_rate {
+                            debug!(new_rate = current_rate, %best_rate, "use the current rate");
                             current_rate
                         } else {
+                            debug!(new_rate = current_rate, %best_rate, "use the new rate");
                             best_rate
                         }
                     })
@@ -121,6 +124,53 @@ impl Graph {
     }
 }
 
+#[cfg(test)]
+mod test {
+    use super::Graph;
+
+    #[test]
+    fn test_direct() {
+        let mut graph = Graph::new();
+        graph.add_rate(['A', 'B'].into(), 1.4);
+        graph.add_rate(['A', 'C'].into(), 0.29);
+        graph.add_rate(['B', 'C'].into(), 0.2);
+
+        let src = 'A'.into();
+        let dst = 'C'.into();
+        let rate = graph.find_best_rate(&src, &dst);
+        assert_eq!(rate, Some(0.29));
+    }
+
+    #[test]
+    fn test_one_hop() {
+        let mut graph = Graph::new();
+        graph.add_rate(['A', 'B'].into(), 1.4);
+        graph.add_rate(['A', 'C'].into(), 0.1);
+        graph.add_rate(['B', 'C'].into(), 0.2);
+
+        let src = 'A'.into();
+        let dst = 'C'.into();
+        let rate = graph.find_best_rate(&src, &dst);
+        assert_eq!(rate, Some(0.28));
+    }
+
+    #[test]
+    fn test_two_hops() {
+        let mut graph = Graph::new();
+        graph.add_rate(['A', 'B'].into(), 1.4);
+        graph.add_rate(['A', 'C'].into(), 0.1);
+        graph.add_rate(['A', 'D'].into(), 0.055);
+        graph.add_rate(['B', 'C'].into(), 0.2);
+        graph.add_rate(['C', 'D'].into(), 0.2);
+        graph.add_rate(['D', 'F'].into(), 2.5);
+
+        let src = 'A'.into();
+        let dst = 'D'.into();
+        let rate = graph.find_best_rate(&src, &dst);
+        assert_eq!(rate, Some(0.056));
+    }
+}
+
 fn main() {
     let mut graph = Graph::new();
     graph.add_rate(['A', 'B'].into(), 1.4);
@@ -130,7 +180,7 @@ fn main() {
     graph.add_rate(['D', 'F'].into(), 2.5);
 
     tracing_subscriber::fmt::init();
-    debug!("{:#?}", graph);
+    trace!("{:#?}", graph);
 
     for src in &graph.vertices {
         for dst in &graph.vertices {
