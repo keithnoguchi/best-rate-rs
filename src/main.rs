@@ -23,10 +23,10 @@ impl fmt::Display for Vertex {
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 struct Edge(Vertex, Vertex);
 
-impl From<(char, char)> for Edge {
-    fn from(edge: (char, char)) -> Self {
-        let (a, b) = edge;
-        Self(a.into(), b.into())
+impl From<[char; 2]> for Edge {
+    fn from(mut edge: [char; 2]) -> Self {
+        edge.sort();
+        Self(edge[0].into(), edge[1].into())
     }
 }
 
@@ -39,7 +39,7 @@ impl fmt::Display for Edge {
 #[derive(Debug)]
 struct Graph {
     vertices: BTreeSet<Vertex>,
-    edges: BTreeMap<Edge, f32>,
+    edges: BTreeMap<Vertex, (Vertex, f32)>,
 }
 
 impl Graph {
@@ -53,7 +53,8 @@ impl Graph {
     pub fn add_rate(&mut self, edge: Edge, rate: f32) {
         self.vertices.insert(edge.0);
         self.vertices.insert(edge.1);
-        self.edges.insert(edge, rate);
+        self.edges.insert(edge.0, (edge.1, rate));
+        self.edges.insert(edge.1, (edge.0, rate));
     }
 
     pub fn find_best_rate(&self, _src: &Vertex, _dst: &Vertex) -> Option<f32> {
@@ -63,10 +64,10 @@ impl Graph {
 
 fn main() {
     let mut graph = Graph::new();
-    graph.add_rate(('A', 'B').into(), 1.4);
-    graph.add_rate(('B', 'C').into(), 0.2);
-    graph.add_rate(('D', 'F').into(), 2.5);
-    graph.add_rate(('A', 'C').into(), 0.1);
+    graph.add_rate(['A', 'B'].into(), 1.4);
+    graph.add_rate(['B', 'C'].into(), 0.2);
+    graph.add_rate(['D', 'F'].into(), 2.5);
+    graph.add_rate(['A', 'C'].into(), 0.1);
 
     for src in &graph.vertices {
         for dst in &graph.vertices {
