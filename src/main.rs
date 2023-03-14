@@ -1,9 +1,9 @@
-//! Graph example
+//! Dex example
 
 #![forbid(missing_debug_implementations)]
 
 use std::collections::hash_map::{Entry, HashMap};
-use std::collections::{BTreeSet, VecDeque};
+use std::collections::{BTreeMap, VecDeque};
 use std::fmt;
 
 use tracing::{debug, instrument, trace};
@@ -24,25 +24,25 @@ impl fmt::Display for Vertex {
 }
 
 #[derive(Debug)]
-struct Graph {
-    vertices: BTreeSet<Vertex>,
-    edges: HashMap<Vertex, HashMap<Vertex, f32>>,
+struct Dex {
+    edges: BTreeMap<Vertex, HashMap<Vertex, f32>>,
 }
 
-impl Graph {
+impl Dex {
     pub fn new() -> Self {
         Self {
-            vertices: BTreeSet::new(),
-            edges: HashMap::new(),
+            edges: BTreeMap::new(),
         }
+    }
+
+    pub fn vertices(&self) -> impl Iterator<Item = &Vertex> {
+        self.edges.keys()
     }
 
     pub fn add_rate(&mut self, src: char, dst: char, rate: f32) {
         assert!(src != dst && rate != 0.0);
         let src = src.into();
         let dst = dst.into();
-        self.vertices.insert(src);
-        self.vertices.insert(dst);
         let entry = self.edges.entry(src).or_insert_with(HashMap::new);
         entry.insert(dst, rate);
         let entry = self.edges.entry(dst).or_insert_with(HashMap::new);
@@ -122,83 +122,83 @@ impl Graph {
 
 #[cfg(test)]
 mod test {
-    use super::Graph;
+    use super::Dex;
 
     #[test]
     fn test_direct() {
-        let mut graph = Graph::new();
-        graph.add_rate('A', 'B', 1.4);
-        graph.add_rate('A', 'C', 0.29);
-        graph.add_rate('B', 'C', 0.2);
+        let mut dex = Dex::new();
+        dex.add_rate('A', 'B', 1.4);
+        dex.add_rate('A', 'C', 0.29);
+        dex.add_rate('B', 'C', 0.2);
 
         let src = 'A'.into();
         let dst = 'C'.into();
-        let rate = graph.find_best_rate(&src, &dst);
+        let rate = dex.find_best_rate(&src, &dst);
         assert_eq!(rate, Some(0.29));
     }
 
     #[test]
     fn test_one_hop() {
-        let mut graph = Graph::new();
-        graph.add_rate('A', 'B', 1.4);
-        graph.add_rate('A', 'C', 0.1);
-        graph.add_rate('B', 'C', 0.2);
+        let mut dex = Dex::new();
+        dex.add_rate('A', 'B', 1.4);
+        dex.add_rate('A', 'C', 0.1);
+        dex.add_rate('B', 'C', 0.2);
 
         let src = 'A'.into();
         let dst = 'C'.into();
-        let rate = graph.find_best_rate(&src, &dst);
+        let rate = dex.find_best_rate(&src, &dst);
         assert_eq!(rate, Some(0.28));
     }
 
     #[test]
     fn test_two_hops() {
-        let mut graph = Graph::new();
-        graph.add_rate('A', 'B', 1.4);
-        graph.add_rate('A', 'C', 0.1);
-        graph.add_rate('A', 'D', 0.055);
-        graph.add_rate('B', 'C', 0.2);
-        graph.add_rate('C', 'D', 0.2);
-        graph.add_rate('D', 'F', 2.5);
+        let mut dex = Dex::new();
+        dex.add_rate('A', 'B', 1.4);
+        dex.add_rate('A', 'C', 0.1);
+        dex.add_rate('A', 'D', 0.055);
+        dex.add_rate('B', 'C', 0.2);
+        dex.add_rate('C', 'D', 0.2);
+        dex.add_rate('D', 'F', 2.5);
 
         let src = 'A'.into();
         let dst = 'D'.into();
-        let rate = graph.find_best_rate(&src, &dst);
+        let rate = dex.find_best_rate(&src, &dst);
         assert_eq!(rate, Some(0.056));
     }
 
     #[test]
     fn test_loop() {
-        let mut graph = Graph::new();
-        graph.add_rate('A', 'B', 1.4);
-        graph.add_rate('A', 'C', 0.1);
-        graph.add_rate('B', 'C', 0.2);
-        graph.add_rate('C', 'D', 0.2);
-        graph.add_rate('D', 'F', 2.5);
+        let mut dex = Dex::new();
+        dex.add_rate('A', 'B', 1.4);
+        dex.add_rate('A', 'C', 0.1);
+        dex.add_rate('B', 'C', 0.2);
+        dex.add_rate('C', 'D', 0.2);
+        dex.add_rate('D', 'F', 2.5);
 
         let src = 'D'.into();
         let dst = 'F'.into();
-        let rate = graph.find_best_rate(&src, &dst);
+        let rate = dex.find_best_rate(&src, &dst);
         assert_eq!(rate, Some(2.5));
     }
 }
 
 fn main() {
-    let mut graph = Graph::new();
-    graph.add_rate('A', 'B', 1.4);
-    graph.add_rate('A', 'C', 0.1);
-    graph.add_rate('B', 'C', 0.2);
-    graph.add_rate('C', 'D', 0.2);
-    graph.add_rate('D', 'F', 2.5);
+    let mut dex = Dex::new();
+    dex.add_rate('A', 'B', 1.4);
+    dex.add_rate('A', 'C', 0.1);
+    dex.add_rate('B', 'C', 0.2);
+    dex.add_rate('C', 'D', 0.2);
+    dex.add_rate('D', 'F', 2.5);
 
     tracing_subscriber::fmt::init();
-    trace!("{:#?}", graph);
+    trace!("{:#?}", dex);
 
-    for src in &graph.vertices {
-        for dst in &graph.vertices {
+    for src in dex.vertices() {
+        for dst in dex.vertices() {
             if src >= dst {
                 continue;
             }
-            if let Some(rate) = graph.find_best_rate(src, dst) {
+            if let Some(rate) = dex.find_best_rate(src, dst) {
                 println!("{src} -> {dst}: {rate}");
             }
         }
