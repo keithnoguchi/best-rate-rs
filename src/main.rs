@@ -12,7 +12,7 @@ use tracing::{debug, instrument, trace};
 mod test;
 
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
-struct Vertex(char);
+pub struct Vertex(char);
 
 impl From<char> for Vertex {
     fn from(v: char) -> Self {
@@ -26,8 +26,50 @@ impl fmt::Display for Vertex {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct Path {
+    path: Vec<Vertex>,
+    rate: f32,
+}
+
+impl fmt::Display for Path {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?} -> {}", self.path, self.rate)
+    }
+}
+
+impl Path {
+    pub fn new(src: Vertex) -> Self {
+        Self {
+            path: vec![src],
+            rate: 1.0,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.path.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.path.len()
+    }
+
+    pub fn contains(&self, v: &Vertex) -> bool {
+        self.path.contains(v)
+    }
+
+    pub fn insert(&mut self, v: Vertex, rate: f32) -> bool {
+        if self.contains(&v) {
+            return false;
+        }
+        self.path.push(v);
+        self.rate *= rate;
+        true
+    }
+}
+
 #[derive(Debug)]
-struct Dex {
+pub struct Dex {
     edges: BTreeMap<Vertex, HashMap<Vertex, f32>>,
 }
 
@@ -58,12 +100,11 @@ impl Dex {
         let mut visited = HashMap::new();
         let mut queue = VecDeque::new();
         let mut best_rate = None;
-        let mut pushed = 0;
 
-        queue.push_back((src, 1.0, vec![src]));
-        while let Some((new_vertex, new_rate, path)) = queue.pop_front() {
-            debug_assert!(pushed < 50);
-            trace!(%new_vertex, %new_rate, ?path, "queue.pop_front()");
+        queue.push_back((src, Path::new(*src)));
+        while let Some((new_vertex, path)) = queue.pop_front() {
+            debug_assert!(path.len() < 100);
+            trace!(%new_vertex, %path, "queue.pop_front()");
 
             // The visited vertex check.
             //
@@ -71,17 +112,17 @@ impl Dex {
             // is more than what we have in the visited HashMap.
             match visited.entry(new_vertex) {
                 Entry::Vacant(entry) => {
-                    entry.insert(new_rate);
+                    entry.insert(path.rate);
                 }
                 Entry::Occupied(mut entry) => {
                     let current_rate = entry.get_mut();
-                    if *current_rate >= new_rate {
+                    if *current_rate >= path.rate {
                         // Current one is better.  Skip this vertex.
                         continue;
                     } else {
                         // New one is better.  Continue the process.
-                        trace!(%new_vertex, %current_rate, %new_rate, "new rate is better than current rate");
-                        *current_rate = new_rate;
+                        trace!(%new_vertex, %current_rate, %path, "new rate is better than current rate");
+                        *current_rate = path.rate;
                     }
                 }
             }
@@ -91,15 +132,15 @@ impl Dex {
             if new_vertex == dst {
                 best_rate = best_rate
                     .map(|best_rate| {
-                        if new_rate > best_rate {
-                            debug!(%new_rate, %best_rate, "use the current rate");
-                            new_rate
+                        if path.rate > best_rate {
+                            debug!(%path.rate, %best_rate, "use the current rate");
+                            path.rate
                         } else {
-                            debug!(%new_rate, %best_rate, "use the new rate");
+                            debug!(%path.rate, %best_rate, "use the new rate");
                             best_rate
                         }
                     })
-                    .or(Some(new_rate));
+                    .or(Some(path.rate));
                 continue;
             }
 
@@ -107,13 +148,11 @@ impl Dex {
             // vertex into to the `queue`.
             if let Some(vertices) = self.edges.get(new_vertex) {
                 for (vertex, rate) in vertices {
-                    if !path.contains(&vertex) {
+                    if !path.contains(vertex) {
                         let mut path = path.clone();
-                        path.push(vertex);
-                        let new_rate = rate * new_rate;
-                        trace!(%vertex, %new_rate, "queue.push_back");
-                        queue.push_back((vertex, new_rate, path));
-                        pushed += 1;
+                        path.insert(*vertex, *rate);
+                        trace!(%vertex, %path, "queue.push_back");
+                        queue.push_back((vertex, path));
                     }
                 }
             }
