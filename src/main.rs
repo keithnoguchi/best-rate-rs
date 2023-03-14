@@ -46,6 +46,16 @@ impl Path {
         }
     }
 
+    pub fn first(&self) -> &Vertex {
+        assert!(!self.path.is_empty());
+        self.path.first().unwrap()
+    }
+
+    pub fn last(&self) -> &Vertex {
+        assert!(!self.path.is_empty());
+        self.path.last().unwrap()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.path.is_empty()
     }
@@ -99,16 +109,16 @@ impl Dex {
         let mut queue = VecDeque::new();
         let mut best_rate = None;
 
-        queue.push_back((src, Path::new(*src)));
-        while let Some((new_vertex, path)) = queue.pop_front() {
+        queue.push_back(Path::new(*src));
+        while let Some(path) = queue.pop_front() {
             debug_assert!(path.len() < 100);
-            trace!(%new_vertex, %path, "queue.pop_front()");
+            trace!(%path, "queue.pop_front()");
 
             // The visited vertex check.
             //
             // It drops the vertex in case the newly calculated rate
             // is more than what we have in the visited HashMap.
-            match visited.entry(new_vertex) {
+            match visited.entry(*path.last()) {
                 Entry::Vacant(entry) => {
                     entry.insert(path.rate);
                 }
@@ -119,7 +129,7 @@ impl Dex {
                         continue;
                     } else {
                         // New one is better.  Continue the process.
-                        trace!(%new_vertex, %current_rate, %path, "new rate is better than current rate");
+                        trace!(%current_rate, %path, "new rate is better than current rate");
                         *current_rate = path.rate;
                     }
                 }
@@ -127,14 +137,14 @@ impl Dex {
 
             // Update the rate in case the newly calculated rate
             // is better than what we have.
-            if new_vertex == dst {
+            if path.last() == dst {
                 best_rate = best_rate
                     .map(|best_rate| {
                         if path.rate > best_rate {
-                            debug!(%path.rate, %best_rate, "use the current rate");
+                            debug!(%path, %best_rate, "use the current rate");
                             path.rate
                         } else {
-                            debug!(%path.rate, %best_rate, "use the new rate");
+                            debug!(%path, %best_rate, "use the new rate");
                             best_rate
                         }
                     })
@@ -144,13 +154,13 @@ impl Dex {
 
             // Continues the breath first search by pushing the new
             // vertex into to the `queue`.
-            if let Some(vertices) = self.edges.get(new_vertex) {
+            if let Some(vertices) = self.edges.get(path.last()) {
                 for (vertex, rate) in vertices {
                     if !path.contains(vertex) {
                         let mut path = path.clone();
                         path.insert(*vertex, *rate);
-                        trace!(%vertex, %path, "queue.push_back");
-                        queue.push_back((vertex, path));
+                        trace!(%path, "queue.push_back");
+                        queue.push_back(path);
                     }
                 }
             }
