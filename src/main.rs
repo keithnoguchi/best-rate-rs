@@ -23,22 +23,6 @@ impl fmt::Display for Vertex {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
-struct Edge(Vertex, Vertex);
-
-impl From<[char; 2]> for Edge {
-    fn from(mut edge: [char; 2]) -> Self {
-        edge.sort();
-        Self(edge[0].into(), edge[1].into())
-    }
-}
-
-impl fmt::Display for Edge {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} -> {}", self.0, self.1)
-    }
-}
-
 #[derive(Debug)]
 struct Graph {
     vertices: BTreeSet<Vertex>,
@@ -53,17 +37,16 @@ impl Graph {
         }
     }
 
-    pub fn add_rate(&mut self, edge: Edge, rate: f32) {
-        assert!(rate != 0.0);
-        if edge.0 == edge.1 {
-            return;
-        }
-        self.vertices.insert(edge.0);
-        self.vertices.insert(edge.1);
-        let entry = self.edges.entry(edge.0).or_insert_with(HashMap::new);
-        entry.insert(edge.1, rate);
-        let entry = self.edges.entry(edge.1).or_insert_with(HashMap::new);
-        entry.insert(edge.0, 1.0 / rate);
+    pub fn add_rate(&mut self, src: char, dst: char, rate: f32) {
+        assert!(src != dst && rate != 0.0);
+        let src = src.into();
+        let dst = dst.into();
+        self.vertices.insert(src);
+        self.vertices.insert(dst);
+        let entry = self.edges.entry(src).or_insert_with(HashMap::new);
+        entry.insert(dst, rate);
+        let entry = self.edges.entry(dst).or_insert_with(HashMap::new);
+        entry.insert(src, 1.0 / rate);
     }
 
     // Breath first traversal to find the best rate.
@@ -144,9 +127,9 @@ mod test {
     #[test]
     fn test_direct() {
         let mut graph = Graph::new();
-        graph.add_rate(['A', 'B'].into(), 1.4);
-        graph.add_rate(['A', 'C'].into(), 0.29);
-        graph.add_rate(['B', 'C'].into(), 0.2);
+        graph.add_rate('A', 'B', 1.4);
+        graph.add_rate('A', 'C', 0.29);
+        graph.add_rate('B', 'C', 0.2);
 
         let src = 'A'.into();
         let dst = 'C'.into();
@@ -157,9 +140,9 @@ mod test {
     #[test]
     fn test_one_hop() {
         let mut graph = Graph::new();
-        graph.add_rate(['A', 'B'].into(), 1.4);
-        graph.add_rate(['A', 'C'].into(), 0.1);
-        graph.add_rate(['B', 'C'].into(), 0.2);
+        graph.add_rate('A', 'B', 1.4);
+        graph.add_rate('A', 'C', 0.1);
+        graph.add_rate('B', 'C', 0.2);
 
         let src = 'A'.into();
         let dst = 'C'.into();
@@ -170,12 +153,12 @@ mod test {
     #[test]
     fn test_two_hops() {
         let mut graph = Graph::new();
-        graph.add_rate(['A', 'B'].into(), 1.4);
-        graph.add_rate(['A', 'C'].into(), 0.1);
-        graph.add_rate(['A', 'D'].into(), 0.055);
-        graph.add_rate(['B', 'C'].into(), 0.2);
-        graph.add_rate(['C', 'D'].into(), 0.2);
-        graph.add_rate(['D', 'F'].into(), 2.5);
+        graph.add_rate('A', 'B', 1.4);
+        graph.add_rate('A', 'C', 0.1);
+        graph.add_rate('A', 'D', 0.055);
+        graph.add_rate('B', 'C', 0.2);
+        graph.add_rate('C', 'D', 0.2);
+        graph.add_rate('D', 'F', 2.5);
 
         let src = 'A'.into();
         let dst = 'D'.into();
@@ -186,11 +169,11 @@ mod test {
     #[test]
     fn test_loop() {
         let mut graph = Graph::new();
-        graph.add_rate(['A', 'B'].into(), 1.4);
-        graph.add_rate(['A', 'C'].into(), 0.1);
-        graph.add_rate(['B', 'C'].into(), 0.2);
-        graph.add_rate(['C', 'D'].into(), 0.2);
-        graph.add_rate(['D', 'F'].into(), 2.5);
+        graph.add_rate('A', 'B', 1.4);
+        graph.add_rate('A', 'C', 0.1);
+        graph.add_rate('B', 'C', 0.2);
+        graph.add_rate('C', 'D', 0.2);
+        graph.add_rate('D', 'F', 2.5);
 
         let src = 'D'.into();
         let dst = 'F'.into();
@@ -201,11 +184,11 @@ mod test {
 
 fn main() {
     let mut graph = Graph::new();
-    graph.add_rate(['A', 'B'].into(), 1.4);
-    graph.add_rate(['A', 'C'].into(), 0.1);
-    graph.add_rate(['B', 'C'].into(), 0.2);
-    graph.add_rate(['C', 'D'].into(), 0.2);
-    graph.add_rate(['D', 'F'].into(), 2.5);
+    graph.add_rate('A', 'B', 1.4);
+    graph.add_rate('A', 'C', 0.1);
+    graph.add_rate('B', 'C', 0.2);
+    graph.add_rate('C', 'D', 0.2);
+    graph.add_rate('D', 'F', 2.5);
 
     tracing_subscriber::fmt::init();
     trace!("{:#?}", graph);
