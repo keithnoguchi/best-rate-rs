@@ -54,6 +54,7 @@ impl Graph {
         self.vertices.insert(edge.0);
         self.vertices.insert(edge.1);
         self.edges.insert(edge.0, (edge.1, rate));
+        self.edges.insert(edge.1, (edge.0, rate));
     }
 
     pub fn find_best_rate(&self, _src: &Vertex, _dst: &Vertex) -> Option<f32> {
