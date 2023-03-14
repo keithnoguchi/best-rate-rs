@@ -9,8 +9,8 @@ fn test_direct() {
 
     let src = 'A'.into();
     let dst = 'C'.into();
-    let rate = dex.find_best_rate(&src, &dst);
-    assert_eq!(rate, Some(0.29));
+    let path = dex.get_best_rate(&src, &dst).unwrap();
+    assert_eq!(path.rate(), 0.29);
 }
 
 #[test]
@@ -22,8 +22,8 @@ fn test_one_hop() {
 
     let src = 'A'.into();
     let dst = 'C'.into();
-    let rate = dex.find_best_rate(&src, &dst);
-    assert_eq!(rate, Some(0.28));
+    let path = dex.get_best_rate(&src, &dst).unwrap();
+    assert_eq!(path.rate(), 0.28);
 }
 
 #[test]
@@ -38,8 +38,8 @@ fn test_two_hops() {
 
     let src = 'A'.into();
     let dst = 'D'.into();
-    let rate = dex.find_best_rate(&src, &dst);
-    assert_eq!(rate, Some(0.056));
+    let path = dex.get_best_rate(&src, &dst).unwrap();
+    assert_eq!(path.rate(), 0.056);
 }
 
 #[test]
@@ -53,6 +53,6 @@ fn test_loop() {
 
     let src = 'D'.into();
     let dst = 'F'.into();
-    let rate = dex.find_best_rate(&src, &dst);
-    assert_eq!(rate, Some(2.5));
+    let path = dex.get_best_rate(&src, &dst).unwrap();
+    assert_eq!(path.rate(), 2.5);
 }
