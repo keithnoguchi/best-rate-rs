@@ -122,7 +122,7 @@ impl Dex {
 
     // Breath first traversal to find the best rate.
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn find_best_rate(&self, src: &Vertex, dst: &Vertex) -> Option<Path> {
+    pub fn get_best_rate(&self, src: &Vertex, dst: &Vertex) -> Option<Path> {
         let mut visited = HashMap::new();
         let mut queue = VecDeque::new();
         let mut best_path = None;
@@ -156,29 +156,29 @@ impl Dex {
             // Update the rate in case the newly calculated rate
             // is better than what we have.
             if path.last() == dst {
-                best_path = best_path
-                    .map(|current_path| {
+                best_path = Some(match best_path {
+                    Some(current_path) => {
                         if path > current_path {
                             debug!(%path, %current_path, "use the new path");
-                            path.clone()
+                            path
                         } else {
                             debug!(%path, %current_path, "use the current path");
                             current_path
                         }
-                    })
-                    .or(Some(path.clone()));
-                continue;
-            }
-
-            // Continues the breath first search by pushing the new
-            // vertex into to the `queue`.
-            if let Some(vertices) = self.edges.get(path.last()) {
-                for (vertex, rate) in vertices {
-                    if !path.contains(vertex) {
-                        let mut path = path.clone();
-                        path.insert(*vertex, *rate);
-                        trace!(%path, "queue.push_back");
-                        queue.push_back(path);
+                    }
+                    None => path,
+                });
+            } else {
+                // Continues the breath first search by pushing the new
+                // vertex into to the `queue`.
+                if let Some(vertices) = self.edges.get(path.last()) {
+                    for (vertex, rate) in vertices {
+                        if !path.contains(vertex) {
+                            let mut path = path.clone();
+                            path.insert(*vertex, *rate);
+                            trace!(%path, "queue.push_back");
+                            queue.push_back(path);
+                        }
                     }
                 }
             }
@@ -202,7 +202,7 @@ fn main() {
     for src in dex.vertices() {
         for dst in dex.vertices() {
             if src != dst {
-                if let Some(path) = dex.find_best_rate(src, dst) {
+                if let Some(path) = dex.get_best_rate(src, dst) {
                     println!("{src} -> {dst}: {:8.4} ({path})", path.rate);
                 }
             }
