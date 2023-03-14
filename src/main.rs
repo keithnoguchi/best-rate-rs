@@ -1,9 +1,9 @@
-//! Graph example
+//! Dex example
 
 #![forbid(missing_debug_implementations)]
 
 use std::collections::hash_map::{Entry, HashMap};
-use std::collections::{BTreeSet, VecDeque};
+use std::collections::VecDeque;
 use std::fmt;
 
 use tracing::{debug, instrument, trace};
@@ -24,24 +24,25 @@ impl fmt::Display for Vertex {
 }
 
 #[derive(Debug)]
-struct Graph {
+struct Dex {
     edges: HashMap<Vertex, HashMap<Vertex, f32>>,
 }
 
-impl Graph {
+impl Dex {
     pub fn new() -> Self {
         Self {
-            vertices: BTreeSet::new(),
             edges: HashMap::new(),
         }
+    }
+
+    pub fn vertices(&self) -> impl Iterator<Item = &Vertex> {
+        self.edges.keys()
     }
 
     pub fn add_rate(&mut self, src: char, dst: char, rate: f32) {
         assert!(src != dst && rate != 0.0);
         let src = src.into();
         let dst = dst.into();
-        self.vertices.insert(src);
-        self.vertices.insert(dst);
         let entry = self.edges.entry(src).or_insert_with(HashMap::new);
         entry.insert(dst, rate);
         let entry = self.edges.entry(dst).or_insert_with(HashMap::new);
@@ -121,11 +122,11 @@ impl Graph {
 
 #[cfg(test)]
 mod test {
-    use super::Graph;
+    use super::Dex;
 
     #[test]
     fn test_direct() {
-        let mut dex = Graph::new();
+        let mut dex = Dex::new();
         dex.add_rate('A', 'B', 1.4);
         dex.add_rate('A', 'C', 0.29);
         dex.add_rate('B', 'C', 0.2);
@@ -138,7 +139,7 @@ mod test {
 
     #[test]
     fn test_one_hop() {
-        let mut dex = Graph::new();
+        let mut dex = Dex::new();
         dex.add_rate('A', 'B', 1.4);
         dex.add_rate('A', 'C', 0.1);
         dex.add_rate('B', 'C', 0.2);
@@ -151,7 +152,7 @@ mod test {
 
     #[test]
     fn test_two_hops() {
-        let mut dex = Graph::new();
+        let mut dex = Dex::new();
         dex.add_rate('A', 'B', 1.4);
         dex.add_rate('A', 'C', 0.1);
         dex.add_rate('A', 'D', 0.055);
@@ -167,7 +168,7 @@ mod test {
 
     #[test]
     fn test_loop() {
-        let mut dex = Graph::new();
+        let mut dex = Dex::new();
         dex.add_rate('A', 'B', 1.4);
         dex.add_rate('A', 'C', 0.1);
         dex.add_rate('B', 'C', 0.2);
@@ -182,7 +183,7 @@ mod test {
 }
 
 fn main() {
-    let mut dex = Graph::new();
+    let mut dex = Dex::new();
     dex.add_rate('A', 'B', 1.4);
     dex.add_rate('A', 'C', 0.1);
     dex.add_rate('B', 'C', 0.2);
@@ -192,8 +193,8 @@ fn main() {
     tracing_subscriber::fmt::init();
     trace!("{:#?}", dex);
 
-    for src in &dex.vertices {
-        for dst in &dex.vertices {
+    for src in dex.vertices() {
+        for dst in dex.vertices() {
             if src >= dst {
                 continue;
             }
