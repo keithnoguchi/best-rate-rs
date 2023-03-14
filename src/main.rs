@@ -76,6 +76,11 @@ impl Graph {
         queue.push_back((src, 1.0));
         while let Some((new_vertex, new_rate)) = queue.pop_front() {
             trace!(%new_vertex, %new_rate, "queue.pop_front()");
+
+            // The visited vertex check.
+            //
+            // It drops the vertex in case the newly calculated rate
+            // is more than what we have in the visited HashMap.
             match visited.entry(new_vertex) {
                 Entry::Vacant(entry) => {
                     entry.insert(new_rate);
@@ -91,6 +96,9 @@ impl Graph {
                     }
                 }
             }
+
+            // Update the rate in case the newly calculated rate
+            // is better than what we have.
             if new_vertex == dst {
                 best_rate = best_rate
                     .map(|best_rate| {
@@ -105,6 +113,9 @@ impl Graph {
                     .or(Some(new_rate));
                 continue;
             }
+
+            // Continues the breath first search by pushing the new
+            // vertex into to the `queue`.
             if let Some(vertices) = self.edges.get(new_vertex) {
                 for (vertex, rate) in vertices {
                     if vertex != src {
