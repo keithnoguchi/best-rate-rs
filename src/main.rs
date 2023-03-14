@@ -69,16 +69,18 @@ impl Graph {
         let mut visited = HashMap::new();
         let mut queue = VecDeque::new();
         let mut best_rate = None;
+        let mut pushed = 0;
 
         queue.push_back((src, 1.0));
         while let Some((current_vertex, current_rate)) = queue.pop_front() {
+            //println!("current_vertex={current_vertex}, current_rate={current_rate}");
             match visited.entry(current_vertex) {
                 Entry::Vacant(entry) => {
                     entry.insert(current_rate);
                 }
                 Entry::Occupied(mut entry) => {
                     let current_entry = entry.get_mut();
-                    if *current_entry > current_rate {
+                    if *current_entry >= current_rate {
                         continue;
                     } else {
                         *current_entry = current_rate;
@@ -87,11 +89,11 @@ impl Graph {
             }
             if current_vertex == dst {
                 best_rate = best_rate
-                    .and_then(|best_rate| {
+                    .map(|best_rate| {
                         if current_rate > best_rate {
-                            Some(current_rate)
+                            current_rate
                         } else {
-                            Some(best_rate)
+                            best_rate
                         }
                     })
                     .or(Some(current_rate));
@@ -103,15 +105,19 @@ impl Graph {
                 }
                 Some(vertices) => {
                     for (next_vertex, rate) in vertices {
-                        let new_rate = rate * current_rate;
-                        if visited.get(next_vertex).is_none() {
-                            queue.push_back((next_vertex, new_rate));
+                        if next_vertex == src {
+                            continue;
                         }
+                        let new_rate = rate * current_rate;
+                        //println!("  next_vertex={next_vertex} new_rate={new_rate}");
+                        pushed += 1;
+                        queue.push_back((next_vertex, new_rate));
                     }
                 }
             }
         }
 
+        println!("pushed={pushed}");
         best_rate
     }
 }
@@ -119,9 +125,9 @@ impl Graph {
 fn main() {
     let mut graph = Graph::new();
     graph.add_rate(['A', 'B'].into(), 1.4);
+    graph.add_rate(['A', 'C'].into(), 0.1);
     graph.add_rate(['B', 'C'].into(), 0.2);
     graph.add_rate(['D', 'F'].into(), 2.5);
-    graph.add_rate(['A', 'C'].into(), 0.1);
 
     for src in &graph.vertices {
         for dst in &graph.vertices {
