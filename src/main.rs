@@ -2,6 +2,7 @@
 
 #![forbid(missing_debug_implementations)]
 
+use std::cmp::Ordering;
 use std::collections::hash_map::{Entry, HashMap};
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt;
@@ -32,9 +33,27 @@ pub struct Path {
     rate: f32,
 }
 
+impl PartialEq for Path {
+    fn eq(&self, other: &Self) -> bool {
+        self.rate == other.rate
+    }
+}
+
+impl PartialOrd for Path {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.rate.partial_cmp(&other.rate)
+    }
+}
+
 impl fmt::Display for Path {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?} -> {}", self.path, self.rate)
+        for (i, vertex) in self.path.iter().take(10).enumerate() {
+            if i != 0 {
+                let _ = f.write_fmt(format_args!(" -> "));
+            }
+            let _ = f.write_fmt(format_args!("{}", vertex));
+        }
+        f.write_fmt(format_args!(": {}", self.rate))
     }
 }
 
@@ -44,16 +63,6 @@ impl Path {
             path: vec![src],
             rate: 1.0,
         }
-    }
-
-    pub fn first(&self) -> &Vertex {
-        assert!(!self.path.is_empty());
-        self.path.first().unwrap()
-    }
-
-    pub fn last(&self) -> &Vertex {
-        assert!(!self.path.is_empty());
-        self.path.last().unwrap()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -66,6 +75,15 @@ impl Path {
 
     pub fn contains(&self, v: &Vertex) -> bool {
         self.path.contains(v)
+    }
+
+    pub fn last(&self) -> &Vertex {
+        assert!(!self.is_empty());
+        self.path.last().unwrap()
+    }
+
+    pub fn rate(&self) -> f32 {
+        self.rate
     }
 
     pub fn insert(&mut self, v: Vertex, rate: f32) -> bool {
@@ -104,10 +122,10 @@ impl Dex {
 
     // Breath first traversal to find the best rate.
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn find_best_rate(&self, src: &Vertex, dst: &Vertex) -> Option<f32> {
+    pub fn find_best_rate(&self, src: &Vertex, dst: &Vertex) -> Option<Path> {
         let mut visited = HashMap::new();
         let mut queue = VecDeque::new();
-        let mut best_rate = None;
+        let mut best_path = None;
 
         queue.push_back(Path::new(*src));
         while let Some(path) = queue.pop_front() {
@@ -138,17 +156,17 @@ impl Dex {
             // Update the rate in case the newly calculated rate
             // is better than what we have.
             if path.last() == dst {
-                best_rate = best_rate
-                    .map(|best_rate| {
-                        if path.rate > best_rate {
-                            debug!(%path, %best_rate, "use the current rate");
-                            path.rate
+                best_path = best_path
+                    .map(|current_path| {
+                        if path > current_path {
+                            debug!(%path, %current_path, "use the new path");
+                            path.clone()
                         } else {
-                            debug!(%path, %best_rate, "use the new rate");
-                            best_rate
+                            debug!(%path, %current_path, "use the current path");
+                            current_path
                         }
                     })
-                    .or(Some(path.rate));
+                    .or(Some(path.clone()));
                 continue;
             }
 
@@ -166,7 +184,7 @@ impl Dex {
             }
         }
 
-        best_rate
+        best_path
     }
 }
 
@@ -183,11 +201,10 @@ fn main() {
 
     for src in dex.vertices() {
         for dst in dex.vertices() {
-            if src >= dst {
-                continue;
-            }
-            if let Some(rate) = dex.find_best_rate(src, dst) {
-                println!("{src} -> {dst}: {rate}");
+            if src != dst {
+                if let Some(path) = dex.find_best_rate(src, dst) {
+                    println!("{src} -> {dst}: {:8.4} ({path})", path.rate);
+                }
             }
         }
     }
