@@ -68,16 +68,14 @@ impl Path {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Dex {
     edges: BTreeMap<Vertex, HashMap<Vertex, f32>>,
 }
 
 impl Dex {
     pub fn new() -> Self {
-        Self {
-            edges: BTreeMap::new(),
-        }
+        Self::default()
     }
 
     pub fn vertices(&self) -> impl Iterator<Item = &Vertex> {
