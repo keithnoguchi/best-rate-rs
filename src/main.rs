@@ -6,6 +6,8 @@ use std::collections::hash_map::{Entry, HashMap};
 use std::collections::{BTreeSet, VecDeque};
 use std::fmt;
 
+use tracing::{debug, trace};
+
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 struct Vertex(char);
 
@@ -69,11 +71,10 @@ impl Graph {
         let mut visited = HashMap::new();
         let mut queue = VecDeque::new();
         let mut best_rate = None;
-        let mut pushed = 0;
 
         queue.push_back((src, 1.0));
         while let Some((current_vertex, current_rate)) = queue.pop_front() {
-            //println!("current_vertex={current_vertex}, current_rate={current_rate}");
+            trace!(%current_vertex, %current_rate, "queue.pop_front()");
             match visited.entry(current_vertex) {
                 Entry::Vacant(entry) => {
                     entry.insert(current_rate);
@@ -109,15 +110,13 @@ impl Graph {
                             continue;
                         }
                         let new_rate = rate * current_rate;
-                        //println!("  next_vertex={next_vertex} new_rate={new_rate}");
-                        pushed += 1;
+                        trace!(%next_vertex, %new_rate, "queue.push_back");
                         queue.push_back((next_vertex, new_rate));
                     }
                 }
             }
         }
 
-        println!("pushed={pushed}");
         best_rate
     }
 }
@@ -128,6 +127,9 @@ fn main() {
     graph.add_rate(['A', 'C'].into(), 0.1);
     graph.add_rate(['B', 'C'].into(), 0.2);
     graph.add_rate(['D', 'F'].into(), 2.5);
+
+    tracing_subscriber::fmt::init();
+    debug!("{:#?}", graph);
 
     for src in &graph.vertices {
         for dst in &graph.vertices {
