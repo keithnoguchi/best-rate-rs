@@ -74,47 +74,43 @@ impl Graph {
         let mut best_rate = None;
 
         queue.push_back((src, 1.0));
-        while let Some((current_vertex, current_rate)) = queue.pop_front() {
-            trace!(%current_vertex, %current_rate, "queue.pop_front()");
-            match visited.entry(current_vertex) {
+        while let Some((new_vertex, new_rate)) = queue.pop_front() {
+            trace!(%new_vertex, %new_rate, "queue.pop_front()");
+            match visited.entry(new_vertex) {
                 Entry::Vacant(entry) => {
-                    entry.insert(current_rate);
+                    entry.insert(new_rate);
                 }
                 Entry::Occupied(mut entry) => {
-                    let current_entry = entry.get_mut();
-                    if *current_entry >= current_rate {
+                    let current_rate = entry.get_mut();
+                    if *current_rate >= new_rate {
+                        // Current one is better.  Skip this vertex.
                         continue;
                     } else {
-                        *current_entry = current_rate;
+                        // New one is better.  Continue the process.
+                        *current_rate = new_rate;
                     }
                 }
             }
-            if current_vertex == dst {
+            if new_vertex == dst {
                 best_rate = best_rate
                     .map(|best_rate| {
-                        if current_rate > best_rate {
-                            debug!(new_rate = current_rate, %best_rate, "use the current rate");
-                            current_rate
+                        if new_rate > best_rate {
+                            debug!(%new_rate, %best_rate, "use the current rate");
+                            new_rate
                         } else {
-                            debug!(new_rate = current_rate, %best_rate, "use the new rate");
+                            debug!(%new_rate, %best_rate, "use the new rate");
                             best_rate
                         }
                     })
-                    .or(Some(current_rate));
+                    .or(Some(new_rate));
                 continue;
             }
-            match self.edges.get(current_vertex) {
-                None => {
-                    continue;
-                }
-                Some(vertices) => {
-                    for (next_vertex, rate) in vertices {
-                        if next_vertex == src {
-                            continue;
-                        }
-                        let new_rate = rate * current_rate;
-                        trace!(%next_vertex, %new_rate, "queue.push_back");
-                        queue.push_back((next_vertex, new_rate));
+            if let Some(vertices) = self.edges.get(new_vertex) {
+                for (vertex, rate) in vertices {
+                    if vertex != src {
+                        let new_rate = rate * new_rate;
+                        trace!(%vertex, %new_rate, "queue.push_back");
+                        queue.push_back((vertex, new_rate));
                     }
                 }
             }
