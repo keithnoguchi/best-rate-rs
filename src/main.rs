@@ -9,9 +9,6 @@ use std::fmt;
 
 use tracing::{debug, instrument, trace};
 
-#[cfg(test)]
-mod test;
-
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Vertex(char);
 
@@ -187,6 +184,9 @@ impl Dex {
         best_path
     }
 }
+
+#[cfg(test)]
+mod test;
 
 fn main() {
     let mut dex = Dex::new();
