@@ -3,7 +3,7 @@
 #![forbid(missing_debug_implementations)]
 
 use std::collections::hash_map::{Entry, HashMap};
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 use std::fmt;
 
 use tracing::{debug, instrument, trace};
@@ -25,13 +25,13 @@ impl fmt::Display for Vertex {
 
 #[derive(Debug)]
 struct Dex {
-    edges: HashMap<Vertex, HashMap<Vertex, f32>>,
+    edges: BTreeMap<Vertex, HashMap<Vertex, f32>>,
 }
 
 impl Dex {
     pub fn new() -> Self {
         Self {
-            edges: HashMap::new(),
+            edges: BTreeMap::new(),
         }
     }
 
