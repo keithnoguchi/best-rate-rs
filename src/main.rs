@@ -126,6 +126,7 @@ fn main() {
     graph.add_rate(['A', 'B'].into(), 1.4);
     graph.add_rate(['A', 'C'].into(), 0.1);
     graph.add_rate(['B', 'C'].into(), 0.2);
+    graph.add_rate(['C', 'D'].into(), 0.2);
     graph.add_rate(['D', 'F'].into(), 2.5);
 
     tracing_subscriber::fmt::init();
